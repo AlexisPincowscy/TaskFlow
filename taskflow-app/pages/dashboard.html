@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaskFlow - Dashboard</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <div class="screen active" id="taskListScreen">
+      <div class="top-nav">
+        <div class="header">
+          <div class="logo"><i class="fas fa-tasks"></i>TaskFlow</div>
+        </div>
+        <div class="user-info">
+          <div class="avatar">U</div>
+          <span class="user-name">Usuário</span>
+          <button class="logout-btn" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i> Sair
+          </button>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <!-- Filtros -->
+        <div class="filters-container">
+          <div>
+            <div>
+              <label for="filterStatus">Status:</label>
+              <select id="filterStatus" onchange="applyFilters()">
+                <option value="">Todos</option>
+                <option value="pendente">Pendente</option>
+                <option value="concluida">Concluída</option>
+              </select>
+            </div>
+            <div>
+              <label for="filterPriority">Prioridade:</label>
+              <select id="filterPriority" onchange="applyFilters()">
+                <option value="">Todas</option>
+                <option value="alta">Alta</option>
+                <option value="media">Média</option>
+                <option value="baixa">Baixa</option>
+              </select>
+            </div>
+            <div>
+              <label for="filterCategory">Categoria:</label>
+              <select id="filterCategory" onchange="applyFilters()">
+                <option value="">Todas</option>
+                <option value="trabalho">Trabalho</option>
+                <option value="pessoal">Pessoal</option>
+                <option value="saude">Saúde</option>
+                <option value="estudos">Estudos</option>
+                <option value="casa">Casa</option>
+              </select>
+            </div>
+            <div>
+              <button
+                onclick="clearFilters()"
+                class="btn"
+                style="
+                  padding: 8px 15px;
+                  background: #6c757d;
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                "
+              >
+                <i class="fas fa-times"></i> Limpar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-tasks"></i></div>
+            <div class="stat-number" id="totalTasks">0</div>
+            <div class="stat-label">Total de Tarefas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-clock"></i></div>
+            <div class="stat-number" id="pendingTasks">0</div>
+            <div class="stat-label">Pendentes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-number" id="completedTasks">0</div>
+            <div class="stat-label">Concluídas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-number" id="overdueTasks">0</div>
+            <div class="stat-label">Atrasadas</div>
+          </div>
+        </div>
+
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+
+        <div class="task-container">
+          <div class="task-header">
+            <h2 class="task-title">Minhas Tarefas</h2>
+            <button class="btn btn-success" onclick="goToCreateTask()">
+              <i class="fas fa-plus"></i>
+              Nova Tarefa
+            </button>
+          </div>
+
+          <table class="task-table">
+            <thead>
+              <tr>
+                <th>Tarefa</th>
+                <th>Prazo</th>
+                <th>Prioridade</th>
+                <th>Categoria</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="taskTableBody">
+              <!-- As tarefas serão inseridas dinamicamente aqui -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Check if user is logged in
+      if (!localStorage.getItem("taskflow_logged_in")) {
+        window.location.href = "../index.html";
+      }
+
+      // Load user info
+      const currentUser = JSON.parse(
+        localStorage.getItem("taskflow_current_user") || "{}"
+      );
+      if (currentUser.name) {
+        document.querySelector(".user-name").textContent = currentUser.name;
+        document.querySelector(".avatar").textContent = currentUser.name
+          .charAt(0)
+          .toUpperCase();
+      }
+
+      // Load tasks from localStorage
+      let tasks = JSON.parse(localStorage.getItem("taskflow_tasks") || "[]");
+
+      function logout() {
+        localStorage.removeItem("taskflow_logged_in");
+        localStorage.removeItem("taskflow_current_user");
+        window.location.href = "../index.html";
+      }
+
+      function goToCreateTask() {
+        window.location.href = "create-task.html";
+      }
+
+      function editTask(taskId) {
+        localStorage.setItem("taskflow_editing_task", taskId);
+        window.location.href = "create-task.html";
+      }
+
+      function deleteTask(taskId) {
+        if (confirm("Tem certeza que deseja excluir esta tarefa?")) {
+          tasks = tasks.filter((task) => task.id !== taskId);
+          localStorage.setItem("taskflow_tasks", JSON.stringify(tasks));
+          renderTasks();
+          updateStats();
+        }
+      }
+
+      function toggleTaskStatus(taskId) {
+        const task = tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.status = task.status === "pendente" ? "concluida" : "pendente";
+          task.completedAt =
+            task.status === "concluida" ? new Date().toISOString() : null;
+          localStorage.setItem("taskflow_tasks", JSON.stringify(tasks));
+          renderTasks();
+          updateStats();
+        }
+      }
+
+      function renderTasks(filteredTasks = null) {
+        const tasksToRender = filteredTasks || tasks;
+        const tbody = document.getElementById("taskTableBody");
+        tbody.innerHTML = "";
+
+        if (tasksToRender.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                Nenhuma tarefa encontrada
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tasksToRender.forEach((task) => {
+          const row = createTaskRow(task);
+          tbody.appendChild(row);
+        });
+      }
+
+      function createTaskRow(task) {
+        const tr = document.createElement("tr");
+        tr.className = "task-row";
+
+        if (task.status === "concluida") {
+          tr.classList.add("task-completed");
+        }
+
+        if (isOverdue(task)) {
+          tr.classList.add("task-overdue");
+        }
+
+        const dueDate = new Date(task.dueDate).toLocaleDateString("pt-BR");
+        const categoryIcon = getCategoryIcon(task.category);
+        const priorityClass = `priority-${task.priority}`;
+        const statusClass = `status-${task.status}`;
+
+        tr.innerHTML = `
+          <td>
+            <div class="task-info">
+              <span class="task-name">${task.title}</span>
+              <span class="task-description">${task.description || ""}</span>
+            </div>
+          </td>
+          <td>${dueDate}</td>
+          <td><span class="priority-badge ${priorityClass}">${capitalize(
+          task.priority
+        )}</span></td>
+          <td>${categoryIcon} ${capitalize(task.category)}</td>
+          <td><span class="status-badge ${statusClass}">${capitalize(
+          task.status
+        )}</span></td>
+          <td>
+            <div class="task-actions">
+              <button class="action-btn complete-btn" onclick="toggleTaskStatus('${
+                task.id
+              }')" title="${
+          task.status === "pendente" ? "Concluir" : "Reabrir"
+        }">
+                <i class="fas fa-${
+                  task.status === "pendente" ? "check" : "undo"
+                }"></i>
+              </button>
+              <button class="action-btn edit-btn" onclick="editTask('${
+                task.id
+              }')" title="Editar">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="action-btn delete-btn" onclick="deleteTask('${
+                task.id
+              }')" title="Excluir">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        `;
+
+        return tr;
+      }
+
+      function getCategoryIcon(category) {
+        const icons = {
+          trabalho: '<i class="fas fa-briefcase" style="color: #e74c3c"></i>',
+          pessoal: '<i class="fas fa-user" style="color: #3498db"></i>',
+          saude: '<i class="fas fa-dumbbell" style="color: #27ae60"></i>',
+          estudos: '<i class="fas fa-book" style="color: #f39c12"></i>',
+          casa: '<i class="fas fa-home" style="color: #9b59b6"></i>',
+        };
+        return (
+          icons[category] || '<i class="fas fa-tag" style="color: #95a5a6"></i>'
+        );
+      }
+
+      function isOverdue(task) {
+        if (task.status === "concluida") return false;
+        const today = new Date();
+        const dueDate = new Date(task.dueDate);
+        return dueDate < today;
+      }
+
+      function capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+      }
+
+      function updateStats() {
+        const total = tasks.length;
+        const pending = tasks.filter(
+          (task) => task.status === "pendente"
+        ).length;
+        const completed = tasks.filter(
+          (task) => task.status === "concluida"
+        ).length;
+        const overdue = tasks.filter(
+          (task) => isOverdue(task) && task.status === "pendente"
+        ).length;
+
+        document.getElementById("totalTasks").textContent = total;
+        document.getElementById("pendingTasks").textContent = pending;
+        document.getElementById("completedTasks").textContent = completed;
+        document.getElementById("overdueTasks").textContent = overdue;
+
+        // Update progress bar
+        const progressPercentage = total > 0 ? (completed / total) * 100 : 0;
+        document.querySelector(
+          ".progress-fill"
+        ).style.width = `${progressPercentage}%`;
+      }
+
+      function applyFilters() {
+        const statusFilter = document.getElementById("filterStatus").value;
+        const priorityFilter = document.getElementById("filterPriority").value;
+        const categoryFilter = document.getElementById("filterCategory").value;
+
+        let filteredTasks = tasks;
+
+        if (statusFilter) {
+          filteredTasks = filteredTasks.filter(
+            (task) => task.status === statusFilter
+          );
+        }
+
+        if (priorityFilter) {
+          filteredTasks = filteredTasks.filter(
+            (task) => task.priority === priorityFilter
+          );
+        }
+
+        if (categoryFilter) {
+          filteredTasks = filteredTasks.filter(
+            (task) => task.category === categoryFilter
+          );
+        }
+
+        renderTasks(filteredTasks);
+      }
+
+      function clearFilters() {
+        document.getElementById("filterStatus").value = "";
+        document.getElementById("filterPriority").value = "";
+        document.getElementById("filterCategory").value = "";
+        renderTasks();
+      }
+
+      // Initialize dashboard
+      document.addEventListener("DOMContentLoaded", function () {
+        // Add sample tasks if none exist
+        if (tasks.length === 0) {
+          tasks = [
+            {
+              id: "1",
+              title: "Comprar mantimentos",
+              description: "Ir ao supermercado comprar itens da lista",
+              dueDate: "2025-12-31",
+              priority: "alta",
+              category: "casa",
+              status: "pendente",
+              createdAt: new Date().toISOString(),
+            },
+            {
+              id: "2",
+              title: "Responder e-mails",
+              description: "Verificar caixa de entrada e responder pendências",
+              dueDate: "2025-12-15",
+              priority: "media",
+              category: "trabalho",
+              status: "pendente",
+              createdAt: new Date().toISOString(),
+            },
+            {
+              id: "3",
+              title: "Ir à academia",
+              description: "Treino de pernas - série completa",
+              dueDate: "2025-12-10",
+              priority: "baixa",
+              category: "saude",
+              status: "concluida",
+              createdAt: new Date().toISOString(),
+            },
+          ];
+          localStorage.setItem("taskflow_tasks", JSON.stringify(tasks));
+        }
+
+        renderTasks();
+        updateStats();
+      });
+    </script>
+  </body>
+</html>

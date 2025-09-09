@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaskFlow - Criar Tarefa</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <div class="screen active" id="createTaskScreen">
+      <div class="screen-content">
+        <div class="header">
+          <div class="logo"><i class="fas fa-tasks"></i>TaskFlow</div>
+          <div class="subtitle" id="pageSubtitle">Criar Nova Tarefa</div>
+        </div>
+
+        <form id="createTaskForm">
+          <div class="form-group">
+            <label for="taskTitle">Título</label>
+            <input
+              type="text"
+              id="taskTitle"
+              placeholder="Nome da tarefa"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="taskDescription">Descrição</label>
+            <textarea
+              id="taskDescription"
+              placeholder="Detalhes da tarefa..."
+            ></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-col">
+              <label for="taskDate">Data</label>
+              <input type="date" id="taskDate" required />
+            </div>
+            <div class="form-col">
+              <label for="taskPriority">Prioridade</label>
+              <select id="taskPriority" required>
+                <option value="">Selecione...</option>
+                <option value="baixa">Baixa</option>
+                <option value="media">Média</option>
+                <option value="alta">Alta</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="taskCategory">Categoria</label>
+            <select id="taskCategory">
+              <option value="">Selecione uma categoria...</option>
+              <option value="trabalho">Trabalho</option>
+              <option value="pessoal">Pessoal</option>
+              <option value="saude">Saúde</option>
+              <option value="estudos">Estudos</option>
+              <option value="casa">Casa</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-save"></i>
+            <span id="submitBtnText">Criar Tarefa</span>
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="goToDashboard()"
+          >
+            <i class="fas fa-arrow-left"></i>
+            Voltar
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Check if user is logged in
+      if (!localStorage.getItem("taskflow_logged_in")) {
+        window.location.href = "../index.html";
+      }
+
+      let editingTaskId = null;
+      let tasks = JSON.parse(localStorage.getItem("taskflow_tasks") || "[]");
+
+      function goToDashboard() {
+        localStorage.removeItem("taskflow_editing_task");
+        window.location.href = "dashboard.html";
+      }
+
+      // Check if we're editing a task
+      document.addEventListener("DOMContentLoaded", function () {
+        editingTaskId = localStorage.getItem("taskflow_editing_task");
+
+        if (editingTaskId) {
+          const task = tasks.find((t) => t.id === editingTaskId);
+          if (task) {
+            document.getElementById("taskTitle").value = task.title;
+            document.getElementById("taskDescription").value = task.description;
+            document.getElementById("taskDate").value = task.dueDate;
+            document.getElementById("taskPriority").value = task.priority;
+            document.getElementById("taskCategory").value = task.category;
+            document.getElementById("submitBtnText").textContent =
+              "Atualizar Tarefa";
+            document.getElementById("pageSubtitle").textContent =
+              "Editar Tarefa";
+          }
+        }
+      });
+
+      document
+        .getElementById("createTaskForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const taskData = {
+            title: document.getElementById("taskTitle").value,
+            description: document.getElementById("taskDescription").value,
+            dueDate: document.getElementById("taskDate").value,
+            priority: document.getElementById("taskPriority").value,
+            category: document.getElementById("taskCategory").value,
+          };
+
+          if (editingTaskId) {
+            // Update existing task
+            const taskIndex = tasks.findIndex((t) => t.id === editingTaskId);
+            if (taskIndex !== -1) {
+              tasks[taskIndex] = {
+                ...tasks[taskIndex],
+                ...taskData,
+                updatedAt: new Date().toISOString(),
+              };
+              alert("Tarefa atualizada com sucesso!");
+            }
+          } else {
+            // Create new task
+            const newTask = {
+              id: Date.now().toString(),
+              ...taskData,
+              status: "pendente",
+              createdAt: new Date().toISOString(),
+            };
+            tasks.push(newTask);
+            alert("Tarefa criada com sucesso!");
+          }
+
+          localStorage.setItem("taskflow_tasks", JSON.stringify(tasks));
+          localStorage.removeItem("taskflow_editing_task");
+          window.location.href = "dashboard.html";
+        });
+    </script>
+  </body>
+</html>

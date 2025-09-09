@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaskFlow - Login</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <!-- Login Screen -->
+    <div class="screen active" id="loginScreen">
+      <div class="screen-content">
+        <div class="header">
+          <div class="logo"><i class="fas fa-tasks"></i>TaskFlow</div>
+          <div class="subtitle">Organize suas tarefas com eficiência</div>
+        </div>
+
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              placeholder="seu@email.com"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Senha</label>
+            <input
+              type="password"
+              id="password"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt"></i>
+            Entrar
+          </button>
+        </form>
+
+        <div class="signup-link">
+          Não tem uma conta? <a href="pages/signup.html">Cadastre-se</a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Check if user is already logged in
+      if (localStorage.getItem("taskflow_logged_in")) {
+        window.location.href = "pages/dashboard.html";
+      }
+
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const email = document.getElementById("email").value;
+          const password = document.getElementById("password").value;
+
+          // Get registered users
+          const users = JSON.parse(
+            localStorage.getItem("taskflow_users") || "[]"
+          );
+          const user = users.find(
+            (u) => u.email === email && u.password === password
+          );
+
+          if (user) {
+            // Set login state
+            localStorage.setItem("taskflow_logged_in", "true");
+            localStorage.setItem("taskflow_current_user", JSON.stringify(user));
+
+            // Redirect to dashboard
+            window.location.href = "pages/dashboard.html";
+          } else {
+            // Show error
+            showAlert("Email ou senha incorretos!", "danger");
+          }
+        });
+
+      function showAlert(message, type) {
+        // Remove existing alerts
+        const existingAlerts = document.querySelectorAll(".alert");
+        existingAlerts.forEach((alert) => alert.remove());
+
+        // Create new alert
+        const alert = document.createElement("div");
+        alert.className = `alert alert-${type}`;
+        alert.textContent = message;
+
+        // Add to screen
+        const screenContent = document.querySelector(".screen-content");
+        screenContent.insertBefore(alert, screenContent.firstChild);
+
+        // Remove after 5 seconds
+        setTimeout(() => {
+          alert.remove();
+        }, 5000);
+      }
+    </script>
+  </body>
+</html>
